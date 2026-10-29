@@ -94,9 +94,26 @@ jobs:
       - name: Screenshots + smoke test
         shell: bash
         run: |
+          set -o pipefail
           npm run preview > preview.log 2>&1 &
           npx --yes wait-on@7 http://127.0.0.1:8080/index.html --timeout 60000
-          node scripts/screenshot.mjs
+          node scripts/screenshot.mjs 2>&1 | tee shots.log
+
+      - name: Report screenshots failure
+        if: failure() && github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Скриншоты не удались:"
+            echo '```'
+            tail -c 12000 shots.log 2>/dev/null || true
+            echo '--- preview.log ---'
+            tail -c 4000 preview.log 2>/dev/null || true
+            echo '```'
+          } > shots-failure.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file shots-failure.md || true
 
       - name: Preview log
         if: always()
