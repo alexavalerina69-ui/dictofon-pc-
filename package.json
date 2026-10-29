@@ -1,0 +1,73 @@
+{
+  "name": "dictofon",
+  "version": "1.0.0",
+  "description": "Простой диктофон для Windows 10: запись микрофона и всего звука компьютера",
+  "main": "src/main.js",
+  "author": "Dictofon",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "electron .",
+    "preview": "node scripts/preview-server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "icon": "node scripts/make-icon.mjs",
+    "dist": "electron-builder --win",
+    "dist:setup": "electron-builder --win nsis",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^0.1.80",
+    "electron": "^45.1.0",
+    "electron-builder": "^26.0.12",
+    "jsdom": "^26.1.0",
+    "lamejs": "^1.2.1"
+  },
+  "build": {
+    "appId": "com.dictofon.app",
+    "productName": "Dictofon",
+    "copyright": "Dictofon",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "build/icon.png",
+      "build/icon.ico"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Диктофон",
+      "artifactName": "Dictofon-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Dictofon-Portable-${version}.${ext}"
+    }
+  }
+}
