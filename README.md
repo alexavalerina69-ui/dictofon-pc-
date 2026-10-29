@@ -166,5 +166,6 @@ scripts/make-icon.mjs       генерация build/icon.ico и icon.png
 
 ## Лицензия
 
-MIT. MP3-энкодер — [lamejs](https://github.com/zhuker/lamejs) под LGPL-3.0,
-файл лицензии: `src/renderer/vendor/lamejs-LICENSE.txt`.
+MIT — файл [LICENSE](LICENSE). MP3-энкодер —
+[lamejs](https://github.com/zhuker/lamejs) под LGPL-3.0, файл лицензии:
+`src/renderer/vendor/lamejs-LICENSE.txt`.
