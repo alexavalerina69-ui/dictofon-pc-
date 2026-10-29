@@ -1,0 +1,129 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-output.log
+
+      - name: Report test failure
+        if: failure() && github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Тесты упали на Windows, вывод ниже:"
+            echo '```'
+            tail -c 20000 test-output.log
+            echo '```'
+          } > failure.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file failure.md || true
+
+      - name: Build installer (NSIS + portable)
+        run: npm run dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dictofon-Windows
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/latest.yml
+          generate_release_notes: true
+
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Chromium
+        run: npm i --no-save puppeteer
+
+      - name: Screenshots + smoke test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run preview > preview.log 2>&1 &
+          npx --yes wait-on@7 http://127.0.0.1:8080/index.html --timeout 60000
+          node scripts/screenshot.mjs 2>&1 | tee shots.log
+
+      - name: Report screenshots failure
+        if: failure() && github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Скриншоты не удались:"
+            echo '```'
+            tail -c 12000 shots.log 2>/dev/null || true
+            echo '--- preview.log ---'
+            tail -c 4000 preview.log 2>/dev/null || true
+            echo '```'
+          } > shots-failure.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file shots-failure.md || true
+
+      - name: Preview log
+        if: always()
+        run: cat preview.log
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dictofon-screenshots
+          path: |
+            docs/screenshots/*.png
+            docs/report.json
+          if-no-files-found: warn
