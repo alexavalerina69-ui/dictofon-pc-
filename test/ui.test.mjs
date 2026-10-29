@@ -157,9 +157,11 @@ test('запись, пауза, продолжение и сохранение �
     assert.ok(await waitFor(() => window.DictoApp.state.phase === 'recording'), 'запись началась');
     assert.equal(document.getElementById('statusText').textContent, 'Идёт запись');
 
-    await new Promise((resolve) => setTimeout(resolve, 1250));
-    const firstTimer = document.getElementById('timer').textContent;
-    assert.notEqual(firstTimer, '00:00', 'таймер идёт');
+    const timerStarted = await waitFor(
+      () => document.getElementById('timer').textContent !== '00:00',
+      5000
+    );
+    assert.ok(timerStarted, 'таймер идёт');
     assert.ok(window.DictoApp.state.engine.duration > 0.9, 'считается длительность');
     assert.ok(!document.getElementById('btnSave').disabled, 'кнопка сохранения активна');
     assert.ok(document.getElementById('btnDiscard').classList.contains('is-visible'));
@@ -168,8 +170,10 @@ test('запись, пауза, продолжение и сохранение �
     assert.equal(window.DictoApp.state.phase, 'paused');
     assert.equal(document.getElementById('statusText').textContent, 'Пауза');
     const pausedTimer = document.getElementById('timer').textContent;
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    const pausedDuration = window.DictoApp.state.engine.duration;
+    await new Promise((resolve) => setTimeout(resolve, 400));
     assert.equal(document.getElementById('timer').textContent, pausedTimer, 'на паузе таймер стоит');
+    assert.equal(window.DictoApp.state.engine.duration, pausedDuration, 'на паузе время не идёт');
 
     document.getElementById('btnRecord').click();
     assert.equal(window.DictoApp.state.phase, 'recording');

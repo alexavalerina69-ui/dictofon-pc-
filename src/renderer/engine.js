@@ -640,33 +640,51 @@
       this.capture = { mic: true, system: this.config.captureSystem };
       this.phase = 'recording';
       this.demoTime = 0;
+      this.demoCarry = 0;
+      this.demoLast = null;
 
+      // Демо идёт по стенным часам, как настоящий захват: на паузе время стоит.
       this.demoTimer = setInterval(() => {
-        const n = BLOCK_FRAMES;
-        const mic = new Float32Array(n);
-        const sysL = new Float32Array(n);
-        const sysR = new Float32Array(n);
-        const t0 = this.demoTime / this.sampleRate;
-        const phrase = (Math.sin(t0 * 0.62) + 1) / 2;
-        const gate = phrase > 0.3 ? 1 : 0.05;
-        for (let i = 0; i < n; i++) {
-          const t = t0 + i / this.sampleRate;
-          const voice =
-            Math.sin(2 * Math.PI * 196 * t) * 0.45 +
-            Math.sin(2 * Math.PI * 392 * t + 1.7) * 0.2 +
-            Math.sin(2 * Math.PI * 587 * t + 0.4) * 0.1;
-          const wobble = 0.7 + 0.3 * Math.sin(2 * Math.PI * 2.4 * t);
-          mic[i] = voice * 0.2 * gate * wobble;
-          const musicL = Math.sin(2 * Math.PI * 261.6 * t) * 0.12 + Math.sin(2 * Math.PI * 329.6 * t) * 0.08;
-          const musicR = Math.sin(2 * Math.PI * 392 * t) * 0.1 + Math.sin(2 * Math.PI * 523.3 * t) * 0.06;
-          sysL[i] = musicL * (0.6 + 0.4 * Math.sin(2 * Math.PI * 0.2 * t));
-          sysR[i] = musicR * (0.6 + 0.4 * Math.cos(2 * Math.PI * 0.17 * t));
+        const now = root.performance && root.performance.now ? root.performance.now() : Date.now();
+        const dt = this.demoLast == null ? DEMO_INTERVAL : now - this.demoLast;
+        this.demoLast = now;
+        if (this.phase === 'recording') {
+          this.demoCarry += (Math.max(0, dt) / 1000) * this.sampleRate;
         }
-        this.demoTime += n;
-        this.handleBlock({ type: 'block', mic, sysL, sysR, frames: n });
+        let guard = 0;
+        while (this.demoCarry >= BLOCK_FRAMES && guard < 64) {
+          this.demoCarry -= BLOCK_FRAMES;
+          guard += 1;
+          this.emitDemoBlock();
+        }
       }, DEMO_INTERVAL);
 
       return { capture: Object.assign({}, this.capture), warnings: [] };
+    }
+
+    emitDemoBlock() {
+      const n = BLOCK_FRAMES;
+      const mic = new Float32Array(n);
+      const sysL = new Float32Array(n);
+      const sysR = new Float32Array(n);
+      const t0 = this.demoTime / this.sampleRate;
+      const phrase = (Math.sin(t0 * 0.62) + 1) / 2;
+      const gate = phrase > 0.3 ? 1 : 0.05;
+      for (let i = 0; i < n; i++) {
+        const t = t0 + i / this.sampleRate;
+        const voice =
+          Math.sin(2 * Math.PI * 196 * t) * 0.45 +
+          Math.sin(2 * Math.PI * 392 * t + 1.7) * 0.2 +
+          Math.sin(2 * Math.PI * 587 * t + 0.4) * 0.1;
+        const wobble = 0.7 + 0.3 * Math.sin(2 * Math.PI * 2.4 * t);
+        mic[i] = voice * 0.2 * gate * wobble;
+        const musicL = Math.sin(2 * Math.PI * 261.6 * t) * 0.12 + Math.sin(2 * Math.PI * 329.6 * t) * 0.08;
+        const musicR = Math.sin(2 * Math.PI * 392 * t) * 0.1 + Math.sin(2 * Math.PI * 523.3 * t) * 0.06;
+        sysL[i] = musicL * (0.6 + 0.4 * Math.sin(2 * Math.PI * 0.2 * t));
+        sysR[i] = musicR * (0.6 + 0.4 * Math.cos(2 * Math.PI * 0.17 * t));
+      }
+      this.demoTime += n;
+      this.handleBlock({ type: 'block', mic, sysL, sysR, frames: n });
     }
   }
 
