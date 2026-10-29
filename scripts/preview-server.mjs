@@ -44,6 +44,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (pathname === '/') pathname = '/index.html';
+  if (pathname === '/favicon.ico') pathname = '/assets/icon.png';
   const filePath = path.join(root, path.normalize(pathname).replace(/^(\.\.[/\\])+/, ''));
   if (!filePath.startsWith(root)) {
     send(res, 403, 'Forbidden');

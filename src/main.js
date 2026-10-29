@@ -284,6 +284,7 @@ function registerAppProtocol() {
       if (url.host !== 'dictofon') return new Response('Not found', { status: 404 });
       let relative = decodeURIComponent(url.pathname);
       if (!relative || relative === '/') relative = '/index.html';
+      if (relative === '/favicon.ico') relative = '/assets/icon.png';
       const target = path.normalize(path.join(RENDERER_DIR, relative));
       const rootWithSep = RENDERER_DIR + path.sep;
       if (target !== RENDERER_DIR && !target.startsWith(rootWithSep)) {

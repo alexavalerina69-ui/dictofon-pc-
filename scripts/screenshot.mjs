@@ -83,8 +83,11 @@ const browser = await puppeteer.launch(launchOptions);
 const page = await browser.newPage();
 
 const consoleErrors = [];
+const ignoreConsole = /favicon/i;
 page.on('console', (message) => {
-  if (message.type() === 'error') consoleErrors.push(message.text());
+  if (message.type() === 'error' && !ignoreConsole.test(message.text())) {
+    consoleErrors.push(message.text());
+  }
 });
 page.on('pageerror', (error) => consoleErrors.push('pageerror: ' + error.message));
 
