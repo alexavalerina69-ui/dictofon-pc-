@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   build:
@@ -29,7 +30,24 @@ jobs:
         run: npm ci
 
       - name: Tests
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-output.log
+
+      - name: Report test failure
+        if: failure() && github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Тесты упали на Windows, вывод ниже:"
+            echo '```'
+            tail -c 20000 test-output.log
+            echo '```'
+          } > failure.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file failure.md || true
 
       - name: Build installer (NSIS + portable)
         run: npm run dist
@@ -71,11 +89,10 @@ jobs:
         run: npm ci
 
       - name: Chromium
-        run: |
-          npm i --no-save playwright
-          npx playwright install --with-deps chromium
+        run: npm i --no-save puppeteer
 
       - name: Screenshots + smoke test
+        shell: bash
         run: |
           npm run preview > preview.log 2>&1 &
           npx --yes wait-on@7 http://127.0.0.1:8080/index.html --timeout 60000
